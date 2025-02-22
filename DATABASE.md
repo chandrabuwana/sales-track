@@ -1,328 +1,192 @@
 # Database Setup Guide
 
-This guide explains how to set up and manage the database for the Sales Market Dashboard using Prisma ORM.
+This guide explains how to set up and manage the database for the Sales Market Dashboard application.
 
 ## Prerequisites
 
-- PostgreSQL installed on your server
-- Node.js and npm installed
-- Basic understanding of SQL and database concepts
+- PostgreSQL 14+ installed
+- Node.js 18+ installed
+- npm or yarn package manager
 
-## Installation
+## Local Development Setup
 
-1. Install Prisma CLI and dependencies:
-```bash
-npm install prisma --save-dev
-npm install @prisma/client
-```
+1. **Install PostgreSQL**
+   ```bash
+   # macOS (using Homebrew)
+   brew install postgresql@14
+   brew services start postgresql@14
 
-2. Initialize Prisma in your project:
-```bash
-npx prisma init
-```
+   # Ubuntu/Debian
+   sudo apt update
+   sudo apt install postgresql-14
+   ```
 
-## Database Configuration
+2. **Create Database**
+   ```bash
+   # Connect to PostgreSQL
+   psql postgres
 
-1. Update your `.env` file with your PostgreSQL connection URL:
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
-```
+   # Create database
+   CREATE DATABASE sales_market;
+   CREATE USER sales_user WITH ENCRYPTED PASSWORD 'your_password';
+   GRANT ALL PRIVILEGES ON DATABASE sales_market TO sales_user;
+   ```
 
-Replace:
-- `USER`: Your database username
-- `PASSWORD`: Your database password
-- `HOST`: Your database host (e.g., localhost or IP address)
-- `PORT`: PostgreSQL port (default: 5432)
-- `DATABASE`: Your database name
+3. **Configure Environment**
+   ```bash
+   # Copy environment template
+   cp .env.example .env
 
-## Schema
+   # Update DATABASE_URL in .env with your credentials
+   DATABASE_URL="postgresql://sales_user:your_password@localhost:5432/sales_market?schema=public"
+   ```
 
-The `schema.prisma` file defines your database structure. Here's our current schema:
+4. **Initialize Database**
+   ```bash
+   # Install dependencies
+   npm install
 
-```prisma
-generator client {
-  provider = "prisma-client-js"
-}
+   # Generate Prisma client
+   npx prisma generate
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+   # Run migrations
+   npx prisma migrate dev
 
-model User {
-  id        String       @id @default(cuid())
-  name      String?
-  email     String       @unique
-  password  String
-  role      Role         @default(SALES)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  stores    StoreStaff[]
-}
+   # (Optional) Seed test data
+   npx ts-node scripts/seed-test-data.ts
+   ```
 
-model Store {
-  id          String       @id @default(cuid())
-  name        String
-  address     String
-  city        String
-  province    String
-  latitude    Float
-  longitude   Float
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  staff       StoreStaff[]
-  products    Product[]
-  inventories Inventory[]
-}
+## Database Schema
 
-model StoreStaff {
-  id        String   @id @default(cuid())
-  userId    String
-  storeId   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+Our application uses Prisma as the ORM with the following main models:
 
-  @@unique([userId, storeId])
-}
+- **User**: Stores user accounts (Admin/Sales)
+- **Store**: Manages store information
+- **Product**: Tracks product inventory
+- **Sale**: Records sales transactions
+- **StoreStock**: Tracks store-specific inventory
 
-model Product {
-  id          String      @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  storeId     String
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  inventories Inventory[]
-}
-
-model Inventory {
-  id        String   @id @default(cuid())
-  quantity  Int
-  storeId   String
-  productId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@unique([storeId, productId])
-}
-
-enum Role {
-  ADMIN
-  SALES
-}
-```
-
-## Database Migration
-
-1. Create a new migration:
-```bash
-npx prisma migrate dev --name init
-```
-
-2. Apply migrations to production:
-```bash
-npx prisma migrate deploy
-```
-
-3. Reset database (WARNING: This will delete all data):
-```bash
-npx prisma migrate reset
-```
-
-## Seeding Data
-
-1. Create a `prisma/seed.ts` file:
-```typescript
-import { PrismaClient } from '@prisma/client'
-import { hash } from 'bcryptjs'
-
-const prisma = new PrismaClient()
-
-async function main() {
-  // Create admin user
-  const adminPassword = await hash('admin123', 12)
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@example.com' },
-    update: {},
-    create: {
-      email: 'admin@example.com',
-      name: 'Admin User',
-      password: adminPassword,
-      role: 'ADMIN',
-    },
-  })
-
-  // Create sample store
-  const store = await prisma.store.create({
-    data: {
-      name: 'Main Store',
-      address: 'Jl. Sudirman No. 1',
-      city: 'Jakarta',
-      province: 'DKI Jakarta',
-      latitude: -6.2088,
-      longitude: 106.8456,
-    },
-  })
-
-  console.log({ admin, store })
-}
-
-main()
-  .catch((e) => {
-    console.error(e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
-```
-
-2. Add seed script to `package.json`:
-```json
-{
-  "scripts": {
-    "db:seed": "npx prisma db seed"
-  },
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
-  }
-}
-```
-
-3. Run the seed:
-```bash
-npm run db:seed
-```
-
-## Production Deployment
-
-1. Build Prisma Client:
-```bash
-npx prisma generate
-```
-
-2. Apply migrations:
-```bash
-npx prisma migrate deploy
-```
-
-3. Environment variables needed in production:
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
-```
+View the complete schema in `prisma/schema.prisma`.
 
 ## Common Operations
 
-### Connecting to Database
-```typescript
-import { PrismaClient } from '@prisma/client'
+### Reset Database
+```bash
+# Drop and recreate database
+npx prisma migrate reset
 
-const prisma = new PrismaClient()
+# Run all migrations
+npx prisma migrate dev
 ```
 
-### Basic CRUD Operations
-```typescript
-// Create
-const user = await prisma.user.create({
-  data: {
-    email: 'user@example.com',
-    name: 'John Doe',
-    password: hashedPassword,
-  },
-})
-
-// Read
-const users = await prisma.user.findMany({
-  include: {
-    stores: true,
-  },
-})
-
-// Update
-const updatedUser = await prisma.user.update({
-  where: { id: 'user_id' },
-  data: {
-    name: 'Jane Doe',
-  },
-})
-
-// Delete
-const deletedUser = await prisma.user.delete({
-  where: { id: 'user_id' },
-})
+### View Data
+```bash
+# Launch Prisma Studio
+npx prisma studio
 ```
+
+### Update Schema
+```bash
+# After modifying schema.prisma
+npx prisma generate
+npx prisma migrate dev --name describe_your_changes
+```
+
+## Production Setup
+
+1. **Create Production Database**
+   - Use a managed PostgreSQL service (e.g., AWS RDS, DigitalOcean)
+   - Set up proper firewall rules
+   - Use strong passwords
+
+2. **Configure Production Environment**
+   ```bash
+   # Set production environment variables
+   DATABASE_URL="postgresql://user:password@your-production-host:5432/sales_market?schema=public"
+   ```
+
+3. **Run Migrations**
+   ```bash
+   # Deploy migrations to production
+   npx prisma migrate deploy
+   ```
 
 ## Backup and Restore
 
-### Backup Database
+### Create Backup
 ```bash
-pg_dump -U USER -h HOST DATABASE > backup.sql
+pg_dump -U sales_user -d sales_market -F c -f backup.dump
 ```
 
-### Restore Database
+### Restore Backup
 ```bash
-psql -U USER -h HOST DATABASE < backup.sql
+pg_restore -U sales_user -d sales_market backup.dump
 ```
 
 ## Troubleshooting
 
-1. **Migration Issues**
-   - Run `npx prisma migrate reset` to reset the database
-   - Check migration history with `npx prisma migrate status`
+### Common Issues
 
-2. **Connection Issues**
-   - Verify DATABASE_URL is correct
+1. **Connection Failed**
    - Check if PostgreSQL is running
-   - Ensure firewall allows connections
+   - Verify credentials in .env
+   - Ensure database exists
 
-3. **Performance Issues**
-   - Use `include` selectively to avoid N+1 queries
-   - Add indexes for frequently queried fields
-   - Monitor query performance with Prisma Studio
+2. **Migration Failed**
+   - Check migration files in prisma/migrations
+   - Run `npx prisma migrate reset` to start fresh
+   - Check for conflicts in schema changes
 
-## Useful Commands
+3. **Prisma Client Issues**
+   - Run `npx prisma generate` after schema changes
+   - Clear node_modules/.prisma
+   - Reinstall dependencies
 
-```bash
-# Open Prisma Studio (GUI)
-npx prisma studio
+### Getting Help
 
-# Check database status
-npx prisma migrate status
-
-# Format schema
-npx prisma format
-
-# Validate schema
-npx prisma validate
-```
+1. Check Prisma documentation: https://www.prisma.io/docs/
+2. Review PostgreSQL logs:
+   ```bash
+   tail -f /usr/local/var/log/postgresql@14.log  # macOS
+   tail -f /var/log/postgresql/postgresql-14-main.log  # Ubuntu
+   ```
 
 ## Security Best Practices
 
-1. **Environment Variables**
-   - Never commit `.env` files
+1. **Access Control**
+   - Use least-privilege database users
+   - Regularly rotate passwords
+   - Use SSL for database connections
+
+2. **Data Protection**
+   - Enable PostgreSQL encryption
+   - Regular backups
+   - Audit sensitive operations
+
+3. **Environment Security**
+   - Never commit .env files
    - Use strong passwords
-   - Rotate credentials regularly
+   - Restrict database access to necessary IPs
 
-2. **Access Control**
-   - Implement row-level security
-   - Use connection pooling in production
-   - Set appropriate user permissions
+## Maintenance
 
-3. **Data Protection**
-   - Encrypt sensitive data
-   - Regularly backup database
-   - Implement audit logging
+Regular maintenance tasks:
 
-## Additional Resources
+1. **Database Optimization**
+   ```bash
+   # Analyze query performance
+   ANALYZE;
 
-- [Prisma Documentation](https://www.prisma.io/docs/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Database Schema Diagram](https://dbdiagram.io/)
+   # Vacuum database
+   VACUUM ANALYZE;
+   ```
 
-For any questions or issues, please refer to the project maintainers or create an issue in the repository.
+2. **Monitoring**
+   - Monitor disk space
+   - Check connection pools
+   - Review slow queries
+
+3. **Updates**
+   - Keep PostgreSQL updated
+   - Update Prisma dependencies
+   - Review and apply security patches

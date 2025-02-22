@@ -3,19 +3,190 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Modern Dark Theme with Vibrant Accents */
+  --primary: #6366F1;      /* Indigo-500 */
+  --primary-dark: #4F46E5; /* Indigo-600 */
+  --secondary: #06B6D4;    /* Cyan-500 */
+  --accent: #8B5CF6;       /* Violet-500 */
+  --background: #0F172A;   /* Slate-900 */
+  --background-light: #1E293B; /* Slate-800 */
+  --foreground: #F8FAFC;   /* Slate-50 - Changed from dark to light */
+  --muted: #94A3B8;        /* Slate-400 - Lightened for better visibility */
+  --success: #10B981;      /* Emerald-500 */
+  --warning: #F59E0B;      /* Amber-500 */
+  --error: #EF4444;        /* Red-500 */
+  --card: #1E293B;         /* Slate-800 */
+  --card-hover: #334155;   /* Slate-700 */
+  --border: #334155;       /* Slate-700 */
+  --input: #1E293B;        /* Slate-800 */
+  --ring: #6366F1;         /* Indigo-500 */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Base text colors */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-foreground;
+  }
+
+  p, span, div {
+    @apply text-foreground;
+  }
+
+  /* Table styles */
+  table {
+    @apply w-full text-foreground;
+  }
+
+  thead {
+    @apply bg-background-light;
+  }
+
+  th {
+    @apply text-foreground font-medium;
+  }
+
+  td {
+    @apply text-foreground;
+  }
+
+  tr:hover {
+    @apply bg-background-light;
   }
 }
 
-body {
-  color: var(--foreground);
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Gradient Backgrounds */
+.gradient-bg {
+  background: linear-gradient(135deg, var(--background-light) 0%, var(--background) 100%);
+}
+
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  border-radius: inherit;
+  z-index: -1;
+}
+
+/* Card Hover Effects */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Button Styles */
+.btn-primary {
+  @apply bg-primary hover:bg-primary-dark text-white transition-colors duration-200;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent) 100%);
+}
+
+/* Glass Effect */
+.glass {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Animation Classes */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dashboard Card Styles */
+.dashboard-card {
+  @apply rounded-xl p-6 glass card-hover;
+  border: 1px solid var(--border);
+}
+
+/* Form Input Styles */
+input, select, textarea {
+  @apply bg-background text-foreground border-border;
+}
+
+/* Leaflet Map Styles */
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.95) !important;
+  color: white !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.95) !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--muted) !important;
+  padding: 8px 8px 0 0 !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: white !important;
+}
+
+/* Fix marker z-index */
+.leaflet-marker-pane {
+  z-index: 1000;
+}
+
+.leaflet-popup-pane {
+  z-index: 1001;
 }

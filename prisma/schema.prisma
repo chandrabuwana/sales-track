@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String
+  role          Role      @default(SALES)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  products      Product[]
+  sales         Sale[]
+  deliveries    Delivery[]
+}
+
+model Store {
+  id          String    @id @default(cuid())
+  name        String
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  sales       Sale[]
+  stocks      StoreStock[]
+  deliveries  Delivery[]
+}
+
+model Product {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  price         Float
+  stock         Int
+  minStockLevel Int      @default(10)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdBy     User      @relation(fields: [userId], references: [id])
+  userId        String
+  storeStocks   StoreStock[]
+  sales         SaleItem[]
+  category      String?
+  sku           String    @unique
+  expiryDate    DateTime?
+  deliveries    DeliveryItem[]
+}
+
+model Sale {
+  id          String     @id @default(cuid())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @default(now()) @updatedAt
+  store       Store      @relation(fields: [storeId], references: [id])
+  storeId     String
+  user        User       @relation(fields: [userId], references: [id])
+  userId      String
+  items       SaleItem[]
+  total       Float      @default(0)
+  status      String     @default("COMPLETED")
+}
+
+model SaleItem {
+  id          String   @id @default(cuid())
+  sale        Sale     @relation(fields: [saleId], references: [id])
+  saleId      String
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   String
+  quantity    Int
+  price       Float
+}
+
+model StoreStock {
+  id          String   @id @default(cuid())
+  store       Store    @relation(fields: [storeId], references: [id])
+  storeId     String
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   String
+  quantity    Int
+  updatedAt   DateTime @updatedAt
+
+  @@unique([storeId, productId])
+}
+
+model Delivery {
+  id          String         @id @default(cuid())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  store       Store          @relation(fields: [storeId], references: [id])
+  storeId     String
+  user        User           @relation(fields: [userId], references: [id])
+  userId      String
+  items       DeliveryItem[]
+  status      String         @default("PENDING")
+}
+
+model DeliveryItem {
+  id          String    @id @default(cuid())
+  delivery    Delivery  @relation(fields: [deliveryId], references: [id])
+  deliveryId  String
+  product     Product   @relation(fields: [productId], references: [id])
+  productId   String
+  quantity    Int
+}
+
+enum Role {
+  ADMIN
+  SALES
+}
